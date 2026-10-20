@@ -1,5 +1,7 @@
 # Advanced Auto-Updater (Cloud-Backup + Geräte + Neustart)
 
+[![Öffnet deine Home-Assistant-Instanz und zeigt den Blueprint-Import-Dialog mit diesem Blueprint an.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FCooky1985%2FHA-Bluprints%2Fmain%2Fblueprints%2Fadvanced-auto-updater%2Fadvanced_auto_updater.yaml)
+
 Eigene Version (6.0.0-local) des Blueprints „Advanced Auto-Updater“ von Artropos (Basis 5.3.0, [Quelle](https://gist.github.com/Artropos/0b8ada3459b10e4d3bbf259ea71c3ace)). Installiert Updates in sicherer Reihenfolge, übersteht HA-Neustarts, wiederholt fehlgeschlagene Downloads und sendet genau eine Abschlussmeldung.
 
 - **Datei:** `advanced_auto_updater.yaml`
@@ -69,7 +71,9 @@ input_boolean:
 
 ## Einbinden
 
-**Import per Adresse:** In Home Assistant unter *Einstellungen → Automatisierungen & Szenen → Blueprints* unten rechts auf *Blueprint importieren* gehen, diese Adresse einfügen, auf *Vorschau* und dann auf *Blueprint importieren* klicken:
+**Per Button:** Oben auf den Button klicken (beim ersten Mal fragt My Home Assistant nach der Adresse deiner Instanz), im Dialog auf *Vorschau* und dann auf *Blueprint importieren* klicken. Gespeichert wird er standardmäßig als `Cooky1985/advanced_auto_updater.yaml`.
+
+**Ohne Button:** In Home Assistant unter *Einstellungen → Automatisierungen & Szenen → Blueprints* unten rechts auf *Blueprint importieren* gehen, diese Adresse einfügen, auf *Vorschau* und dann auf *Blueprint importieren* klicken:
 
 ```
 https://raw.githubusercontent.com/Cooky1985/HA-Bluprints/main/blueprints/advanced-auto-updater/advanced_auto_updater.yaml

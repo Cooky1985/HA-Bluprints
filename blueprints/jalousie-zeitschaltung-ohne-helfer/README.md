@@ -1,5 +1,7 @@
 # Jalousie Zeitschaltung (ohne Helfer)
 
+[![Öffnet deine Home-Assistant-Instanz und zeigt den Blueprint-Import-Dialog mit diesem Blueprint an.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FCooky1985%2FHA-Bluprints%2Fmain%2Fblueprints%2Fjalousie-zeitschaltung-ohne-helfer%2Fjalousie_zeitschaltung_ohne_helfer.yaml)
+
 Öffnet und schließt eine oder mehrere Jalousien (oder Rollläden) zu zwei festen Uhrzeiten. Dieses Blueprint braucht keine Helfer: Die Zeiten werden direkt in der Automation eingestellt, zum Ein- und Ausschalten dient der normale Schalter der Automation.
 
 Sollen die Zeiten im Dashboard einstellbar sein, ist stattdessen [`jalousie-zeitschaltung`](../jalousie-zeitschaltung/) die richtige Wahl.
@@ -29,7 +31,9 @@ Keine. Das Blueprint braucht keine Helfer.
 
 ## Einbinden
 
-**Import per Adresse:** In Home Assistant unter *Einstellungen → Automatisierungen & Szenen → Blueprints* unten rechts auf *Blueprint importieren* gehen, diese Adresse einfügen, auf *Vorschau* und dann auf *Blueprint importieren* klicken:
+**Per Button:** Oben auf den Button klicken (beim ersten Mal fragt My Home Assistant nach der Adresse deiner Instanz), im Dialog auf *Vorschau* und dann auf *Blueprint importieren* klicken. Gespeichert wird er standardmäßig als `Cooky1985/jalousie_zeitschaltung_ohne_helfer.yaml`.
+
+**Ohne Button:** In Home Assistant unter *Einstellungen → Automatisierungen & Szenen → Blueprints* unten rechts auf *Blueprint importieren* gehen, diese Adresse einfügen, auf *Vorschau* und dann auf *Blueprint importieren* klicken:
 
 ```
 https://raw.githubusercontent.com/Cooky1985/HA-Bluprints/main/blueprints/jalousie-zeitschaltung-ohne-helfer/jalousie_zeitschaltung_ohne_helfer.yaml
