@@ -1,7 +1,5 @@
 # Licht Zeitschaltung (Zeiten per Helfer)
 
-[![Öffnet deine Home-Assistant-Instanz und zeigt den Blueprint-Import-Dialog mit diesem Blueprint an.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FCooky1985%2FHA-Bluprints%2Fmain%2Fblueprints%2Fschreibtisch-licht-zeitschaltung%2Fschreibtisch_licht_zeitschaltung.yaml)
-
 Schaltet ein oder mehrere Lichter zu festen Uhrzeiten ein und aus. Die Zeiten kommen aus zwei `input_datetime`-Helfern (nur Uhrzeit) und lassen sich deshalb bequem im Dashboard ändern. Ein `input_boolean` aktiviert oder deaktiviert die Zeitschaltung.
 
 - **Datei:** `schreibtisch_licht_zeitschaltung.yaml`
@@ -46,9 +44,7 @@ input_datetime:
 
 ## Einbinden
 
-**Per Button:** Oben auf den Button klicken (beim ersten Mal fragt My Home Assistant nach der Adresse deiner Instanz), im Dialog auf *Vorschau* und dann auf *Blueprint importieren* klicken. Gespeichert wird er standardmäßig als `Cooky1985/schreibtisch_licht_zeitschaltung.yaml`.
-
-**Ohne Button:** In Home Assistant unter *Einstellungen → Automatisierungen & Szenen → Blueprints* unten rechts auf *Blueprint importieren* gehen, diese Adresse einfügen, auf *Vorschau* und dann auf *Blueprint importieren* klicken:
+**Import per Adresse:** In Home Assistant unter *Einstellungen → Automatisierungen & Szenen → Blueprints* unten rechts auf *Blueprint importieren* gehen, diese Adresse einfügen, auf *Vorschau* und dann auf *Blueprint importieren* klicken:
 
 ```
 https://raw.githubusercontent.com/Cooky1985/HA-Bluprints/main/blueprints/schreibtisch-licht-zeitschaltung/schreibtisch_licht_zeitschaltung.yaml
