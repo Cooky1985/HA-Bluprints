@@ -1,0 +1,1005 @@
+blueprint:
+  name: Advanced Auto-Updater (Cloud-Backup + Geräte + Neustart)
+  description: |-
+    Based on Artropos "Advanced Auto-Updater" 5.3.0. Installs updates in a safe sequence, survives HA restarts, retries failed downloads and sends exactly ONE final notification.
+    Version: 6.0.0-local
+    ### Changes vs. 5.3.0
+    * Pre-run backup now uses the Home Assistant automatic backup settings
+      (backup.create_automatic), so it lands in the configured backup
+      locations (e.g. OneDrive). The run waits until the backup manager is
+      idle again and verifies success via the "last successful automatic
+      backup" sensor. If the backup fails the run is aborted (optional).
+    * New: device updates (firmware of Zigbee/Matter/Shelly/UniFi... any update
+      entity with a device that supports install), with an exclude list and
+      its own timeout.
+    * New: optional Home Assistant restart after the whole run (only if at
+      least one update was installed).
+  domain: automation
+  input:
+    run_time:
+      name: Scheduled time
+      description: Time at which updates should run daily.
+      default: "03:00:00"
+      selector:
+        time: {}
+    allowed_days:
+      name: Update days
+      description: On which days of the week is the update run allowed to start?
+      default:
+      - mon
+      - tue
+      - wed
+      - thu
+      - fri
+      - sat
+      - sun
+      selector:
+        select:
+          options:
+          - label: Monday
+            value: mon
+          - label: Tuesday
+            value: tue
+          - label: Wednesday
+            value: wed
+          - label: Thursday
+            value: thu
+          - label: Friday
+            value: fri
+          - label: Saturday
+            value: sat
+          - label: Sunday
+            value: sun
+          multiple: true
+          mode: list
+    create_backup_before_run:
+      name: Create full backup before update run
+      description: Runs backup.create_automatic (uses the settings under Settings > System > Backups, e.g. OneDrive) before the first update is installed.
+      default: true
+      selector:
+        boolean: {}
+    abort_on_backup_failure:
+      name: Abort run if backup failed
+      description: If the backup could not be verified, do not install anything.
+      default: true
+      selector:
+        boolean: {}
+    backup_timeout:
+      name: Backup timeout (minutes)
+      description: Maximum time in minutes to wait for the pre-run backup (incl. cloud upload).
+      default: 45
+      selector:
+        number:
+          min: 10
+          max: 180
+          step: 5
+          unit_of_measurement: minutes
+          mode: slider
+    notification_service:
+      name: Legacy notification service(s) (notify.* actions)
+      description: Enter one or more legacy notify services, separated by commas.
+      default: ''
+      selector:
+        text: {}
+    send_message_targets:
+      name: Modern notification service(s) (notify.send_message)
+      description: Select one or more notification service entities.
+      default: []
+      selector:
+        entity:
+          domain: notify
+          multiple: true
+    update_addons:
+      name: Update Add-ons
+      description: Automatically install Supervisor add-on updates.
+      default: true
+      selector:
+        boolean: {}
+    update_hacs:
+      name: Update HACS & Integrations
+      description: Automatically install HACS and custom integration updates.
+      default: true
+      selector:
+        boolean: {}
+    update_devices:
+      name: Update devices (firmware)
+      description: Automatically install device updates (all other update entities that belong to a device and support installation, e.g. Zigbee, Matter, Shelly, UniFi firmware).
+      default: true
+      selector:
+        boolean: {}
+    device_exclude:
+      name: Devices excluded from auto update
+      description: Update entities that must never be installed automatically (e.g. Zigbee coordinator firmware).
+      default: []
+      selector:
+        entity:
+          domain: update
+          multiple: true
+    device_install_timeout:
+      name: Device install timeout (minutes)
+      description: Maximum time in minutes to wait for a single device update (battery devices may need long).
+      default: 10
+      selector:
+        number:
+          min: 2
+          max: 120
+          step: 1
+          unit_of_measurement: minutes
+          mode: slider
+    update_os:
+      name: Update OS & Supervisor
+      description: Automatically install Home Assistant OS and Supervisor updates.
+      default: true
+      selector:
+        boolean: {}
+    update_core:
+      name: Update Home Assistant Core
+      description: Automatically install Core updates.
+      default: false
+      selector:
+        boolean: {}
+    restart_after_run:
+      name: Restart Home Assistant after the run
+      description: Restarts Home Assistant Core once everything is done, but only if at least one update was installed. Skipped when Core/OS updates already restarted the system.
+      default: true
+      selector:
+        boolean: {}
+    max_retries:
+      name: Maximum retries
+      description: Maximum number of retry attempts for failed add-on/HACS updates before giving up.
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 10
+          step: 1
+          mode: slider
+    install_timeout:
+      name: Install timeout (minutes)
+      description: Maximum time in minutes to wait for a single add-on/HACS/OS/Core update to complete.
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 120
+          step: 5
+          unit_of_measurement: minutes
+          mode: slider
+    log_entity:
+      name: Update log helper
+      description: Select an input_text helper used to store the update log during a run.
+      selector:
+        entity:
+          domain: input_text
+    stage_entity:
+      name: Stage helper
+      description: Select an input_text helper used to track the current update stage.
+      selector:
+        entity:
+          domain: input_text
+    run_active_helper:
+      name: Run active helper
+      description: Select an input_boolean that tracks whether an update run is currently in progress.
+      selector:
+        entity:
+          domain: input_boolean
+    notification_sent_helper:
+      name: Notification sent helper
+      description: Select an input_boolean that tracks whether the final notification has been sent.
+      selector:
+        entity:
+          domain: input_boolean
+mode: single
+max_exceeded: silent
+variables:
+  raw_notify_service: !input notification_service
+  notify_list: |-
+    {% set ns = namespace(items=[]) %} {% for item in raw_notify_service.split(',') %}
+      {% set svc = item | trim %}
+      {% if svc != '' %}
+        {% set ns.items = ns.items + [svc] %}
+      {% endif %}
+    {% endfor %} {{ ns.items }}
+  send_message_targets: !input send_message_targets
+  update_addons: !input update_addons
+  update_hacs: !input update_hacs
+  update_devices: !input update_devices
+  device_exclude: !input device_exclude
+  update_os: !input update_os
+  update_core: !input update_core
+  restart_after_run: !input restart_after_run
+  max_retries: !input max_retries
+  install_timeout: !input install_timeout
+  log_entity: !input log_entity
+  stage_entity: !input stage_entity
+  run_active_helper: !input run_active_helper
+  notification_sent_helper: !input notification_sent_helper
+  allowed_days: !input allowed_days
+  create_backup_before_run: !input create_backup_before_run
+  abort_on_backup_failure: !input abort_on_backup_failure
+  backup_timeout: !input backup_timeout
+triggers:
+- platform: time
+  at: !input run_time
+  id: scheduled
+- platform: homeassistant
+  event: start
+  id: startup
+actions:
+- if:
+  - condition: trigger
+    id: scheduled
+  then:
+  - action: input_text.set_value
+    data:
+      entity_id: !input log_entity
+      value: ''
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: idle
+  - action: input_boolean.turn_on
+    data:
+      entity_id: !input run_active_helper
+  - action: input_boolean.turn_off
+    data:
+      entity_id: !input notification_sent_helper
+  - delay: "00:00:01"
+- if:
+  - condition: trigger
+    id: startup
+  then:
+  - wait_template: |-
+      {{ states(log_entity) not in ['unknown', 'unavailable']
+         and states(stage_entity) not in ['unknown', 'unavailable']
+         and states(run_active_helper) not in ['unknown', 'unavailable']
+         and states(notification_sent_helper) not in ['unknown', 'unavailable'] }}
+    timeout: "00:10:00"
+    continue_on_timeout: false
+  - delay: "00:02:00"
+- variables:
+    hacs_entities: |-
+      {{ integration_entities('hacs')
+         | select('match', '^update\\.')
+         | list }}
+    addon_entities: |-
+      {% set hacs_ids = integration_entities('hacs') | select('match', '^update\\.') | list %} {% set excluded = [
+        'update.home_assistant_core_update',
+        'update.home_assistant_operating_system_update',
+        'update.home_assistant_supervisor_update'
+      ] %} {{ integration_entities('hassio')
+         | select('match', '^update\\.')
+         | reject('in', hacs_ids)
+         | reject('in', excluded)
+         | list }}
+    device_entities: |-
+      {% set hacs_ids = integration_entities('hacs') | select('match', '^update\\.') | list %} {% set hassio_ids = integration_entities('hassio') | select('match', '^update\\.') | list %} {% set ns = namespace(items=[]) %} {% for s in states.update %}
+        {% set e = s.entity_id %}
+        {% if e not in hacs_ids
+              and e not in hassio_ids
+              and e not in device_exclude
+              and not e.startswith('update.blueprints_')
+              and device_id(e) is not none
+              and (s.attributes.supported_features | default(0) | int | bitwise_and(1)) == 1 %}
+          {% set ns.items = ns.items + [e] %}
+        {% endif %}
+      {% endfor %} {{ ns.items }}
+    safe_log: "{% set log = states(log_entity) %} {{ '' if log in ['unknown', 'unavailable', 'none', ''] else log }}"
+    current_stage: "{% set s = states(stage_entity) %} {{ '' if s in ['unknown', 'unavailable', 'none', ''] else s }}"
+    current_selected_updates: |-
+      {% set ns = namespace(items=[]) %} {% set hacs_ids = integration_entities('hacs') | select('match', '^update\\.') | list %} {% set excluded = [
+        'update.home_assistant_core_update',
+        'update.home_assistant_operating_system_update',
+        'update.home_assistant_supervisor_update'
+      ] %} {% set addon_ids = integration_entities('hassio')
+         | select('match', '^update\\.')
+         | reject('in', hacs_ids)
+         | reject('in', excluded)
+         | list %}
+      {% set os_ids = [
+        'update.home_assistant_supervisor_update',
+        'update.home_assistant_operating_system_update'
+      ] %} {% set core_ids = ['update.home_assistant_core_update'] %} {% for e in states.update | selectattr('state', 'eq', 'on') | map(attribute='entity_id') | list %}
+        {% if update_addons and e in addon_ids %}
+          {% set ns.items = ns.items + [e] %}
+        {% elif update_hacs and e in hacs_ids %}
+          {% set ns.items = ns.items + [e] %}
+        {% elif update_os and e in os_ids %}
+          {% set ns.items = ns.items + [e] %}
+        {% elif update_core and e in core_ids %}
+          {% set ns.items = ns.items + [e] %}
+        {% elif update_devices and e in device_entities %}
+          {% set ns.items = ns.items + [e] %}
+        {% endif %}
+      {% endfor %} {{ ns.items }}
+- if:
+  - condition: template
+    value_template: |-
+      {{ is_state(run_active_helper, 'on')
+         and is_state(notification_sent_helper, 'on')
+         and current_stage in ['idle', ''] }}
+  then:
+  - action: input_boolean.turn_off
+    data:
+      entity_id: !input run_active_helper
+  - action: input_boolean.turn_off
+    data:
+      entity_id: !input notification_sent_helper
+  - action: input_text.set_value
+    data:
+      entity_id: !input log_entity
+      value: ''
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: idle
+  - action: system_log.write
+    data:
+      message: 'Auto-updater: Stuck run state detected and cleared (run_active=on, notification_sent=on, stage=idle).'
+      level: warning
+  - stop: Stuck run state cleared.
+- if:
+  - condition: template
+    value_template: |-
+      {{ is_state(run_active_helper, 'on')
+         and is_state(notification_sent_helper, 'off')
+         and (current_selected_updates | count == 0)
+         and (safe_log | trim == '')
+         and current_stage in ['idle', ''] }}
+  then:
+  - action: input_boolean.turn_off
+    data:
+      entity_id: !input run_active_helper
+  - action: input_boolean.turn_off
+    data:
+      entity_id: !input notification_sent_helper
+  - action: input_text.set_value
+    data:
+      entity_id: !input log_entity
+      value: ''
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: idle
+  - stop: Stale run state cleared. Nothing to resume.
+- if:
+  - condition: template
+    value_template: |-
+      {{ is_state(notification_sent_helper, 'on')
+         and is_state(run_active_helper, 'off')
+         and (current_selected_updates | count > 0) }}
+  then:
+  - action: input_boolean.turn_off
+    data:
+      entity_id: !input notification_sent_helper
+- if:
+  - condition: template
+    value_template: |-
+      {{ (current_selected_updates | count == 0)
+         and not (
+           is_state(run_active_helper, 'on')
+           and is_state(notification_sent_helper, 'off')
+           and (safe_log | trim != '' or current_stage not in ['idle', ''])
+         ) }}
+  then:
+  - stop: No selected updates available and no valid run to resume.
+- if:
+  - condition: trigger
+    id: startup
+  - condition: template
+    value_template: "{{ current_stage == 'core_pending' }}"
+  then:
+  - variables:
+      core_result: "{{ 'succeeded' if is_state('update.home_assistant_core_update', 'off') else 'failed' }}"
+  - if:
+    - condition: template
+      value_template: "{{ core_result == 'failed' }}"
+    then:
+    - action: system_log.write
+      data:
+        level: error
+        logger: homeassistant.components.automation.advanced_auto_updater
+        message: "Auto-updater FAILURE: HA Core update failed to complete after restart. Installed: {{ state_attr('update.home_assistant_core_update', 'installed_version') }} Latest: {{ state_attr('update.home_assistant_core_update', 'latest_version') }}"
+  - action: input_text.set_value
+    data:
+      entity_id: !input log_entity
+      value: |-
+        {% set old = states(log_entity) %} {% set old_clean = '' if old in ['unknown', 'unavailable', 'none', ''] else old %} {% set icon = '✅' if is_state('update.home_assistant_core_update', 'off') else '❌' %} {% set ver = state_attr('update.home_assistant_core_update', 'installed_version') | default('?') %} {% set new_log = old_clean ~ '\n' ~ icon ~ ' HA Core (' ~ ver ~ ')' %} {% set maxlen = state_attr(log_entity, 'max') | int(255) %} {{ new_log[-maxlen:] | regex_replace('^\n+', '') }}
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: idle
+  - action: system_log.write
+    data:
+      message: 'Auto-updater RESUME: Core update {{ core_result }}.'
+      level: info
+  - delay: "00:00:01"
+  - variables:
+      safe_log: "{% set log = states(log_entity) %} {{ '' if log in ['unknown', 'unavailable', 'none', ''] else log }}"
+      current_stage: idle
+- if:
+  - condition: trigger
+    id: startup
+  - condition: template
+    value_template: "{{ current_stage == 'os_pending' }}"
+  then:
+  - variables:
+      os_result: "{{ 'succeeded' if is_state('update.home_assistant_operating_system_update', 'off') else 'failed' }}"
+  - if:
+    - condition: template
+      value_template: "{{ os_result == 'failed' }}"
+    then:
+    - action: system_log.write
+      data:
+        level: error
+        logger: homeassistant.components.automation.advanced_auto_updater
+        message: "Auto-updater FAILURE: HA OS update failed to complete after reboot. Installed: {{ state_attr('update.home_assistant_operating_system_update', 'installed_version') }} Latest: {{ state_attr('update.home_assistant_operating_system_update', 'latest_version') }}"
+  - action: input_text.set_value
+    data:
+      entity_id: !input log_entity
+      value: |-
+        {% set old = states(log_entity) %} {% set old_clean = '' if old in ['unknown', 'unavailable', 'none', ''] else old %} {% set icon = '✅' if is_state('update.home_assistant_operating_system_update', 'off') else '❌' %} {% set ver = state_attr('update.home_assistant_operating_system_update', 'installed_version') | default('?') %} {% set new_log = old_clean ~ '\n' ~ icon ~ ' HA OS (' ~ ver ~ ')' %} {% set maxlen = state_attr(log_entity, 'max') | int(255) %} {{ new_log[-maxlen:] | regex_replace('^\n+', '') }}
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: idle
+  - action: system_log.write
+    data:
+      message: 'Auto-updater RESUME: OS update {{ os_result }}.'
+      level: info
+  - delay: "00:00:01"
+  - variables:
+      safe_log: "{% set log = states(log_entity) %} {{ '' if log in ['unknown', 'unavailable', 'none', ''] else log }}"
+      current_stage: idle
+- if:
+  - condition: template
+    value_template: "{{ create_backup_before_run and trigger.id == 'scheduled' }}"
+  then:
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: backup
+  - variables:
+      backup_start_ts: '{{ as_timestamp(now()) }}'
+  - action: system_log.write
+    data:
+      message: 'Auto-updater: Creating full backup (automatic backup settings) before update run...'
+      level: info
+  - action: backup.create_automatic
+    continue_on_error: true
+  - delay: "00:00:20"
+  - alias: Wait until the backup manager is idle again
+    wait_template: "{{ is_state('sensor.backup_backup_manager_state', 'idle') }}"
+    timeout:
+      minutes: !input backup_timeout
+    continue_on_timeout: true
+  - delay: "00:00:05"
+  - variables:
+      backup_success: "{{ as_timestamp(states('sensor.backup_last_successful_automatic_backup'), 0) >= (backup_start_ts | float(0)) }}"
+  - action: input_text.set_value
+    data:
+      entity_id: !input log_entity
+      value: |-
+        {% set cur = states(log_entity) %} {% set cur_clean = '' if cur in ['unknown', 'unavailable', 'none', ''] else cur %} {% set icon = '💾✅' if backup_success else '💾❌' %} {% set new_log = cur_clean ~ '\n' ~ icon ~ ' Backup' %} {% set maxlen = state_attr(log_entity, 'max') | int(255) %} {{ new_log[-maxlen:] | regex_replace('^\n+', '') }}
+  - if:
+    - condition: template
+      value_template: '{{ not backup_success and abort_on_backup_failure }}'
+    then:
+    - action: system_log.write
+      data:
+        level: error
+        logger: homeassistant.components.automation.advanced_auto_updater
+        message: 'Auto-updater FAILURE: Pre-run backup could not be verified. Run aborted, nothing was updated.'
+    - if:
+      - condition: template
+        value_template: '{{ notify_list | count > 0 }}'
+      then:
+      - repeat:
+          for_each: '{{ notify_list }}'
+          sequence:
+          - action: '{{ repeat.item }}'
+            data:
+              title: ❌ Updates aborted
+              message: The pre-run backup failed or timed out. No updates were installed.
+            continue_on_error: true
+    - if:
+      - condition: template
+        value_template: '{{ send_message_targets | count > 0 }}'
+      then:
+      - repeat:
+          for_each: '{{ send_message_targets }}'
+          sequence:
+          - action: notify.send_message
+            data:
+              entity_id: '{{ repeat.item }}'
+              message: ❌ Updates aborted\n\nThe pre-run backup failed or timed out. No updates were installed.
+            continue_on_error: true
+    - action: input_boolean.turn_on
+      data:
+        entity_id: !input notification_sent_helper
+    - action: input_boolean.turn_off
+      data:
+        entity_id: !input run_active_helper
+    - action: input_text.set_value
+      data:
+        entity_id: !input stage_entity
+        value: idle
+    - action: input_text.set_value
+      data:
+        entity_id: !input log_entity
+        value: ''
+    - stop: Pre-run backup failed - run aborted.
+  - action: system_log.write
+    data:
+      message: 'Auto-updater: Pre-run backup finished (success={{ backup_success }}).'
+      level: info
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: idle
+- if:
+  - condition: template
+    value_template: "{{ update_addons and trigger.id == 'scheduled' }}"
+  then:
+  - repeat:
+      for_each: |-
+        {{ states.update
+           | selectattr('state', 'eq', 'on')
+           | selectattr('entity_id', 'in', addon_entities)
+           | map(attribute='entity_id')
+           | list }}
+      sequence:
+      - alias: Logging start addon install
+        action: system_log.write
+        data:
+          message: "Auto-updater: Installing add-on {{ state_attr(repeat.item, 'friendly_name') | default(repeat.item) }} ({{ state_attr(repeat.item, 'installed_version') }} → {{ state_attr(repeat.item, 'latest_version') }})"
+          level: info
+      - alias: Executing addon install
+        action: update.install
+        data:
+          entity_id: '{{ repeat.item }}'
+        continue_on_error: true
+      - delay: "00:01:00"
+      - alias: Wait for addon install
+        wait_template: "{{ is_state(repeat.item, 'off') }}"
+        timeout:
+          minutes: !input install_timeout
+        continue_on_timeout: true
+      - alias: Log failure to system if failed
+        if:
+        - condition: template
+          value_template: "{{ not is_state(repeat.item, 'off') }}"
+        then:
+        - action: system_log.write
+          data:
+            level: error
+            logger: homeassistant.components.automation.advanced_auto_updater
+            message: "Auto-updater FAILURE: Addon {{ state_attr(repeat.item, 'friendly_name') | default(repeat.item) }} failed. Reason: {{ 'Timeout' if state_attr(repeat.item, 'in_progress') else 'Unknown error' }}. State: {{ states(repeat.item) }}"
+      - action: input_text.set_value
+        data:
+          entity_id: !input log_entity
+          value: |-
+            {% set cur = states(log_entity) %} {% set cur_clean = '' if cur in ['unknown', 'unavailable', 'none', ''] else cur %} {% set icon = '✅' if is_state(repeat.item, 'off') else '❌' %} {% set name = state_attr(repeat.item, 'friendly_name') | default(repeat.item) %} {% set ver = state_attr(repeat.item, 'installed_version') | default('?') %} {% set new_log = cur_clean ~ '\n' ~ icon ~ ' ' ~ name ~ ' (' ~ ver ~ ')' %} {% set maxlen = state_attr(log_entity, 'max') | int(255) %} {{ new_log[-maxlen:] | regex_replace('^\n+', '') }}
+- if:
+  - condition: template
+    value_template: "{{ update_hacs and trigger.id == 'scheduled' }}"
+  then:
+  - repeat:
+      for_each: |-
+        {{ states.update
+           | selectattr('state', 'eq', 'on')
+           | selectattr('entity_id', 'in', hacs_entities)
+           | map(attribute='entity_id')
+           | list }}
+      sequence:
+      - action: system_log.write
+        data:
+          message: "Auto-updater: Installing HACS component {{ state_attr(repeat.item, 'friendly_name') | default(repeat.item) }} ({{ state_attr(repeat.item, 'installed_version') }} → {{ state_attr(repeat.item, 'latest_version') }})"
+          level: info
+      - action: update.install
+        data:
+          entity_id: '{{ repeat.item }}'
+        continue_on_error: true
+      - delay: "00:01:00"
+      - wait_template: "{{ is_state(repeat.item, 'off') }}"
+        timeout:
+          minutes: !input install_timeout
+        continue_on_timeout: true
+      - if:
+        - condition: template
+          value_template: "{{ not is_state(repeat.item, 'off') }}"
+        then:
+        - action: system_log.write
+          data:
+            level: error
+            logger: homeassistant.components.automation.advanced_auto_updater
+            message: "Auto-updater FAILURE: HACS {{ state_attr(repeat.item, 'friendly_name') | default(repeat.item) }} failed. Reason: {{ 'Timeout' if state_attr(repeat.item, 'in_progress') else 'Unknown error' }}. State: {{ states(repeat.item) }}"
+      - action: input_text.set_value
+        data:
+          entity_id: !input log_entity
+          value: |-
+            {% set cur = states(log_entity) %} {% set cur_clean = '' if cur in ['unknown', 'unavailable', 'none', ''] else cur %} {% set icon = '✅' if is_state(repeat.item, 'off') else '❌' %} {% set name = state_attr(repeat.item, 'friendly_name') | default(repeat.item) %} {% set ver = state_attr(repeat.item, 'installed_version') | default('?') %} {% set new_log = cur_clean ~ '\n' ~ icon ~ ' ' ~ name ~ ' (' ~ ver ~ ')' %} {% set maxlen = state_attr(log_entity, 'max') | int(255) %} {{ new_log[-maxlen:] | regex_replace('^\n+', '') }}
+- if:
+  - condition: template
+    value_template: "{{ update_devices and trigger.id == 'scheduled' }}"
+  then:
+  - repeat:
+      for_each: |-
+        {{ states.update
+           | selectattr('state', 'eq', 'on')
+           | selectattr('entity_id', 'in', device_entities)
+           | map(attribute='entity_id')
+           | list }}
+      sequence:
+      - action: system_log.write
+        data:
+          message: "Auto-updater: Installing device update {{ state_attr(repeat.item, 'friendly_name') | default(repeat.item) }} ({{ state_attr(repeat.item, 'installed_version') }} → {{ state_attr(repeat.item, 'latest_version') }})"
+          level: info
+      - action: update.install
+        data:
+          entity_id: '{{ repeat.item }}'
+        continue_on_error: true
+      - delay: "00:00:30"
+      - wait_template: "{{ is_state(repeat.item, 'off') }}"
+        timeout:
+          minutes: !input device_install_timeout
+        continue_on_timeout: true
+      - if:
+        - condition: template
+          value_template: "{{ not is_state(repeat.item, 'off') }}"
+        then:
+        - action: system_log.write
+          data:
+            level: error
+            logger: homeassistant.components.automation.advanced_auto_updater
+            message: "Auto-updater FAILURE: Device update {{ state_attr(repeat.item, 'friendly_name') | default(repeat.item) }} did not finish. Reason: {{ 'Timeout (still in progress)' if state_attr(repeat.item, 'in_progress') else 'Unknown error' }}. State: {{ states(repeat.item) }}"
+      - action: input_text.set_value
+        data:
+          entity_id: !input log_entity
+          value: |-
+            {% set cur = states(log_entity) %} {% set cur_clean = '' if cur in ['unknown', 'unavailable', 'none', ''] else cur %} {% set icon = '✅' if is_state(repeat.item, 'off') else '❌' %} {% set name = state_attr(repeat.item, 'friendly_name') | default(repeat.item) %} {% set ver = state_attr(repeat.item, 'installed_version') | default('?') %} {% set new_log = cur_clean ~ '\n' ~ icon ~ ' ' ~ name ~ ' (' ~ ver ~ ')' %} {% set maxlen = state_attr(log_entity, 'max') | int(255) %} {{ new_log[-maxlen:] | regex_replace('^\n+', '') }}
+- if:
+  - condition: template
+    value_template: "{{ trigger.id == 'scheduled' }}"
+  then:
+  - repeat:
+      count: !input max_retries
+      sequence:
+      - variables:
+          retry_attempt: '{{ repeat.index }}'
+          retry_targets: |-
+            {% set ns = namespace(items=[]) %} {% for e in states.update | selectattr('state', 'eq', 'on') | map(attribute='entity_id') | list %}
+              {% if update_addons and e in addon_entities %}
+                {% set ns.items = ns.items + [e] %}
+              {% elif update_hacs and e in hacs_entities %}
+                {% set ns.items = ns.items + [e] %}
+              {% endif %}
+            {% endfor %} {{ ns.items }}
+      - if:
+        - condition: template
+          value_template: '{{ retry_targets | count > 0 }}'
+        then:
+        - action: system_log.write
+          data:
+            message: "Auto-updater: Retry attempt {{ retry_attempt }} for {{ retry_targets | count }} failed update(s): {{ retry_targets | join(', ') }}"
+            level: warning
+        - delay: "00:02:00"
+        - repeat:
+            for_each: '{{ retry_targets }}'
+            sequence:
+            - action: update.install
+              data:
+                entity_id: '{{ repeat.item }}'
+              continue_on_error: true
+            - delay: "00:01:00"
+            - wait_template: "{{ is_state(repeat.item, 'off') }}"
+              timeout:
+                minutes: !input install_timeout
+              continue_on_timeout: true
+            - if:
+              - condition: template
+                value_template: "{{ not is_state(repeat.item, 'off') }}"
+              then:
+              - action: system_log.write
+                data:
+                  level: error
+                  logger: homeassistant.components.automation.advanced_auto_updater
+                  message: "Auto-updater FAILURE: Retry {{ retry_attempt }} for {{ state_attr(repeat.item, 'friendly_name') | default(repeat.item) }} failed."
+            - action: input_text.set_value
+              data:
+                entity_id: !input log_entity
+                value: |-
+                  {% set cur = states(log_entity) %} {% set cur_clean = '' if cur in ['unknown', 'unavailable', 'none', ''] else cur %} {% set icon = '✅' if is_state(repeat.item, 'off') else '❌' %} {% set name = state_attr(repeat.item, 'friendly_name') | default(repeat.item) %} {% set ver = state_attr(repeat.item, 'installed_version') | default('?') %} {% set new_log = cur_clean ~ '\n' ~ icon ~ ' ' ~ name ~ ' (' ~ ver ~ ') [R' ~ retry_attempt ~ ']' %} {% set maxlen = state_attr(log_entity, 'max') | int(255) %} {{ new_log[-maxlen:] | regex_replace('^\n+', '') }}
+- if:
+  - condition: template
+    value_template: "{{ update_os and trigger.id == 'scheduled' }}"
+  - condition: state
+    entity_id: update.home_assistant_supervisor_update
+    state: 'on'
+  then:
+  - action: system_log.write
+    data:
+      message: "Auto-updater: Installing Supervisor update ({{ state_attr('update.home_assistant_supervisor_update', 'installed_version') }} → {{ state_attr('update.home_assistant_supervisor_update', 'latest_version') }})"
+      level: info
+  - action: update.install
+    data:
+      entity_id: update.home_assistant_supervisor_update
+    continue_on_error: true
+  - delay: "00:02:00"
+  - wait_template: "{{ is_state('update.home_assistant_supervisor_update', 'off') }}"
+    timeout:
+      minutes: !input install_timeout
+    continue_on_timeout: true
+  - if:
+    - condition: template
+      value_template: "{{ not is_state('update.home_assistant_supervisor_update', 'off') }}"
+    then:
+    - action: system_log.write
+      data:
+        level: error
+        logger: homeassistant.components.automation.advanced_auto_updater
+        message: "Auto-updater FAILURE: Supervisor update failed. Installed: {{ state_attr('update.home_assistant_supervisor_update', 'installed_version') }} Latest: {{ state_attr('update.home_assistant_supervisor_update', 'latest_version') }}"
+  - action: input_text.set_value
+    data:
+      entity_id: !input log_entity
+      value: |-
+        {% set cur = states(log_entity) %} {% set cur_clean = '' if cur in ['unknown', 'unavailable', 'none', ''] else cur %} {% set icon = '✅' if is_state('update.home_assistant_supervisor_update', 'off') else '❌' %} {% set ver = state_attr('update.home_assistant_supervisor_update', 'installed_version') | default('?') %} {% set new_log = cur_clean ~ '\n' ~ icon ~ ' Supervisor (' ~ ver ~ ')' %} {% set maxlen = state_attr(log_entity, 'max') | int(255) %} {{ new_log[-maxlen:] | regex_replace('^\n+', '') }}
+- if:
+  - condition: template
+    value_template: "{{ update_os and trigger.id == 'scheduled' }}"
+  - condition: state
+    entity_id: update.home_assistant_operating_system_update
+    state: 'on'
+  then:
+  - action: input_boolean.turn_on
+    data:
+      entity_id: !input run_active_helper
+  - action: input_boolean.turn_off
+    data:
+      entity_id: !input notification_sent_helper
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: os_pending
+  - delay: "00:00:02"
+  - action: system_log.write
+    data:
+      message: "Auto-updater: Installing OS update ({{ state_attr('update.home_assistant_operating_system_update', 'installed_version') }} → {{ state_attr('update.home_assistant_operating_system_update', 'latest_version') }}). System may reboot."
+      level: info
+  - action: update.install
+    data:
+      entity_id: update.home_assistant_operating_system_update
+    continue_on_error: true
+  - delay: "00:05:00"
+  - wait_template: "{{ is_state('update.home_assistant_operating_system_update', 'off') }}"
+    timeout:
+      minutes: !input install_timeout
+    continue_on_timeout: true
+  - if:
+    - condition: template
+      value_template: "{{ not is_state('update.home_assistant_operating_system_update', 'off') }}"
+    then:
+    - action: system_log.write
+      data:
+        level: error
+        logger: homeassistant.components.automation.advanced_auto_updater
+        message: 'Auto-updater FAILURE: OS update failed to confirm before potential reboot. Check logs after reboot if applicable.'
+  - action: input_text.set_value
+    data:
+      entity_id: !input log_entity
+      value: |-
+        {% set cur = states(log_entity) %} {% set cur_clean = '' if cur in ['unknown', 'unavailable', 'none', ''] else cur %} {% set icon = '✅' if is_state('update.home_assistant_operating_system_update', 'off') else '❌' %} {% set ver = state_attr('update.home_assistant_operating_system_update', 'installed_version') | default('?') %} {% set new_log = cur_clean ~ '\n' ~ icon ~ ' HA OS (' ~ ver ~ ')' %} {% set maxlen = state_attr(log_entity, 'max') | int(255) %} {{ new_log[-maxlen:] | regex_replace('^\n+', '') }}
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: idle
+- if:
+  - condition: template
+    value_template: "{{ update_core and trigger.id == 'scheduled' }}"
+  - condition: state
+    entity_id: update.home_assistant_core_update
+    state: 'on'
+  then:
+  - action: input_boolean.turn_on
+    data:
+      entity_id: !input run_active_helper
+  - action: input_boolean.turn_off
+    data:
+      entity_id: !input notification_sent_helper
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: core_pending
+  - delay: "00:00:02"
+  - action: system_log.write
+    data:
+      message: "Auto-updater: Installing Core update ({{ state_attr('update.home_assistant_core_update', 'installed_version') }} → {{ state_attr('update.home_assistant_core_update', 'latest_version') }}). Home Assistant may restart."
+      level: info
+  - action: update.install
+    data:
+      entity_id: update.home_assistant_core_update
+    continue_on_error: true
+  - delay: "00:05:00"
+  - wait_template: "{{ is_state('update.home_assistant_core_update', 'off') }}"
+    timeout:
+      minutes: !input install_timeout
+    continue_on_timeout: true
+  - if:
+    - condition: template
+      value_template: "{{ not is_state('update.home_assistant_core_update', 'off') }}"
+    then:
+    - action: system_log.write
+      data:
+        level: error
+        logger: homeassistant.components.automation.advanced_auto_updater
+        message: 'Auto-updater FAILURE: Core update failed to confirm before restart.'
+  - action: input_text.set_value
+    data:
+      entity_id: !input log_entity
+      value: |-
+        {% set cur = states(log_entity) %} {% set cur_clean = '' if cur in ['unknown', 'unavailable', 'none', ''] else cur %} {% set icon = '✅' if is_state('update.home_assistant_core_update', 'off') else '❌' %} {% set ver = state_attr('update.home_assistant_core_update', 'installed_version') | default('?') %} {% set new_log = cur_clean ~ '\n' ~ icon ~ ' HA Core (' ~ ver ~ ')' %} {% set maxlen = state_attr(log_entity, 'max') | int(255) %} {{ new_log[-maxlen:] | regex_replace('^\n+', '') }}
+  - action: input_text.set_value
+    data:
+      entity_id: !input stage_entity
+      value: idle
+- variables:
+    remaining_selected_updates: |-
+      {% set ns = namespace(items=[]) %} {% for e in current_selected_updates %}
+        {% if not is_state(e, 'off') %}
+          {% set ns.items = ns.items + [e] %}
+        {% endif %}
+      {% endfor %} {{ ns.items }}
+    restart_planned: |-
+      {{ restart_after_run
+         and trigger.id == 'scheduled'
+         and (current_selected_updates | count) > (remaining_selected_updates | count) }}
+    release_notes_block: |-
+      {% set ns = namespace(lines=[]) %} {% for e in current_selected_updates %}
+        {% set url = state_attr(e, 'release_url') | default('') %}
+        {% set name = state_attr(e, 'friendly_name') | default(e) %}
+        {% if url not in ['', none, 'None'] %}
+          {% set ns.lines = ns.lines + ['🔗 ' ~ name ~ ': ' ~ url] %}
+        {% endif %}
+      {% endfor %} {{ ns.lines | join('\n') }}
+    final_title: |-
+      {% if remaining_selected_updates | count == 0 %}
+        ✅ Updates completed
+      {% else %}
+        ⚠️ Updates partially completed
+      {% endif %}
+    final_message: |-
+      {% set log = states(log_entity) %} {% if remaining_selected_updates | count == 0 %}
+        {% set log_text = log if log not in ['unknown', 'unavailable', 'none', '']
+           else 'All selected updates completed successfully.' %}
+        {% if release_notes_block | trim != '' %}
+          {{ log_text ~ '\n\n📋 Release notes:\n' ~ release_notes_block }}
+        {% else %}
+          {{ log_text }}
+        {% endif %}
+      {% else %}
+        {% set ns = namespace(names=[]) %}
+        {% for e in remaining_selected_updates %}
+          {% set name = state_attr(e, 'friendly_name') | default(e) %}
+          {% set url = state_attr(e, 'release_url') | default('') %}
+          {% set entry = name ~ (' → ' ~ url if url not in ['', none, 'None'] else '') %}
+          {% set ns.names = ns.names + [entry] %}
+        {% endfor %}
+        {% set log_text = log if log not in ['unknown', 'unavailable', 'none', '']
+           else 'Some updates could not be completed.' %}
+        {% set pending_text = '\n\n⏳ Still pending:\n' ~ (ns.names | join('\n')) %}
+        {% if release_notes_block | trim != '' %}
+          {{ log_text ~ pending_text ~ '\n\n📋 Release notes:\n' ~ release_notes_block }}
+        {% else %}
+          {{ log_text ~ pending_text }}
+        {% endif %}
+      {% endif %}
+    final_message_full: |-
+      {{ final_message | trim ~ ('\n\n🔄 Home Assistant restarts now.' if restart_planned else '') }}
+- if:
+  - condition: state
+    entity_id: !input notification_sent_helper
+    state: 'off'
+  then:
+  - if:
+    - condition: template
+      value_template: '{{ notify_list | count > 0 }}'
+    then:
+    - repeat:
+        for_each: '{{ notify_list }}'
+        sequence:
+        - action: '{{ repeat.item }}'
+          data:
+            title: '{{ final_title | trim }}'
+            message: '{{ final_message_full }}'
+          continue_on_error: true
+  - if:
+    - condition: template
+      value_template: '{{ send_message_targets | count > 0 }}'
+    then:
+    - repeat:
+        for_each: '{{ send_message_targets }}'
+        sequence:
+        - action: notify.send_message
+          data:
+            entity_id: '{{ repeat.item }}'
+            message: |-
+              {{ (final_title | trim) ~ '\n\n' ~ final_message_full }}
+          continue_on_error: true
+  - action: input_boolean.turn_on
+    data:
+      entity_id: !input notification_sent_helper
+  - action: system_log.write
+    data:
+      message: 'Auto-updater: Final notification sent. Remaining updates: {{ remaining_selected_updates | count }}. Restart planned: {{ restart_planned }}. Log: {{ states(log_entity) }}'
+      level: info
+- action: input_boolean.turn_off
+  data:
+    entity_id: !input run_active_helper
+- action: input_text.set_value
+  data:
+    entity_id: !input stage_entity
+    value: idle
+- action: input_text.set_value
+  data:
+    entity_id: !input log_entity
+    value: ''
+- if:
+  - condition: template
+    value_template: '{{ restart_planned }}'
+  then:
+  - action: system_log.write
+    data:
+      message: 'Auto-updater: Restarting Home Assistant after update run.'
+      level: info
+  - action: homeassistant.check_config
+  - delay: "00:00:15"
+  - action: homeassistant.restart
+conditions:
+- condition: template
+  value_template: |-
+    {% set run_active = is_state(run_active_helper, 'on') %} {% set notif_sent = is_state(notification_sent_helper, 'on') %} {% if trigger.id == 'scheduled' %}
+      {% set day_ok = now().strftime('%a') | lower in allowed_days %}
+      {% if not day_ok %}
+        false
+      {% else %}
+        {% set hacs_ids = integration_entities('hacs') | select('match', '^update\\.') | list %}
+        {% set supervisor_updates = integration_entities('hassio') | select('match', '^update\\.') | list %}
+        {% set excluded = [
+          'update.home_assistant_core_update',
+          'update.home_assistant_operating_system_update',
+          'update.home_assistant_supervisor_update'
+        ] %}
+        {% set addon_ids = supervisor_updates | reject('in', hacs_ids) | reject('in', excluded) | list %}
+        {% set os_ids = [
+          'update.home_assistant_supervisor_update',
+          'update.home_assistant_operating_system_update'
+        ] %}
+        {% set core_ids = ['update.home_assistant_core_update'] %}
+        {% set ns = namespace(pending=false) %}
+        {% for s in states.update | selectattr('state', 'eq', 'on') | list %}
+          {% set e = s.entity_id %}
+          {% if update_addons and e in addon_ids %}
+            {% set ns.pending = true %}
+          {% elif update_hacs and e in hacs_ids %}
+            {% set ns.pending = true %}
+          {% elif update_os and e in os_ids %}
+            {% set ns.pending = true %}
+          {% elif update_core and e in core_ids %}
+            {% set ns.pending = true %}
+          {% elif update_devices
+                  and e not in supervisor_updates
+                  and e not in hacs_ids
+                  and e not in device_exclude
+                  and not e.startswith('update.blueprints_')
+                  and device_id(e) is not none
+                  and (s.attributes.supported_features | default(0) | int | bitwise_and(1)) == 1 %}
+            {% set ns.pending = true %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.pending and not run_active }}
+      {% endif %}
+    {% elif trigger.id == 'startup' %}
+      {{ run_active and not notif_sent }}
+    {% else %}
+      false
+    {% endif %}

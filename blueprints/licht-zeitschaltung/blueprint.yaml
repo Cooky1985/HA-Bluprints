@@ -1,0 +1,61 @@
+blueprint:
+  name: Licht Zeitschaltung (Zeiten per Helfer)
+  description: |-
+    Schaltet ein oder mehrere Lichter zu festen Uhrzeiten ein und aus. Die Zeiten kommen aus zwei input_datetime-Helfern (nur Uhrzeit) und lassen sich deshalb bequem im Dashboard ändern. Ein input_boolean aktiviert oder deaktiviert die Zeitschaltung.
+
+    Hinweis: Ein Blueprint kann keine Helfer anlegen. Die drei Helfer müssen vorher existieren, zum Beispiel über die Package-Datei licht_zeitschaltung_helfer.yaml.
+  domain: automation
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    light_target:
+      name: Licht(er)
+      description: Die Lichter (oder ein Bereich), die geschaltet werden.
+      selector:
+        target:
+          entity:
+            domain: light
+    enable_helper:
+      name: Aktivierungsschalter
+      description: input_boolean. Die Zeitschaltung läuft nur, wenn er an ist.
+      selector:
+        entity:
+          domain: input_boolean
+    on_time_helper:
+      name: Einschaltzeit
+      description: input_datetime (nur Uhrzeit) mit der Einschaltzeit.
+      selector:
+        entity:
+          domain: input_datetime
+    off_time_helper:
+      name: Ausschaltzeit
+      description: input_datetime (nur Uhrzeit) mit der Ausschaltzeit.
+      selector:
+        entity:
+          domain: input_datetime
+mode: single
+triggers:
+- trigger: time
+  at: !input on_time_helper
+  id: an
+- trigger: time
+  at: !input off_time_helper
+  id: aus
+conditions:
+- condition: state
+  entity_id: !input enable_helper
+  state: 'on'
+actions:
+- choose:
+  - conditions:
+    - condition: trigger
+      id: an
+    sequence:
+    - action: light.turn_on
+      target: !input light_target
+  - conditions:
+    - condition: trigger
+      id: aus
+    sequence:
+    - action: light.turn_off
+      target: !input light_target

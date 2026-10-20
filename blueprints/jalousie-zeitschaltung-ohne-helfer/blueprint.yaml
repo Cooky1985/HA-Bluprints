@@ -1,0 +1,51 @@
+blueprint:
+  name: Jalousie Zeitschaltung (ohne Helfer)
+  description: |-
+    Öffnet und schließt eine oder mehrere Jalousien (oder Rollläden) zu zwei festen Uhrzeiten. Dieses Blueprint braucht keine Helfer: Die Zeiten werden direkt in der Automation eingestellt, zum Ein- und Ausschalten dient der normale Schalter der Automation.
+
+    Wenn die Zeiten stattdessen im Dashboard einstellbar sein sollen, ist das Blueprint "Jalousie Zeitschaltung (Zeiten per Helfer)" die richtige Wahl.
+  domain: automation
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    cover_target:
+      name: Jalousie(n)
+      description: Die Jalousien (oder ein Bereich), die geöffnet und geschlossen werden.
+      selector:
+        target:
+          entity:
+            domain: cover
+    open_time:
+      name: Öffnungszeit
+      description: Uhrzeit, zu der die Jalousien geöffnet werden.
+      default: "07:00:00"
+      selector:
+        time: {}
+    close_time:
+      name: Schließzeit
+      description: Uhrzeit, zu der die Jalousien geschlossen werden.
+      default: "22:00:00"
+      selector:
+        time: {}
+mode: single
+triggers:
+- trigger: time
+  at: !input open_time
+  id: oeffnen
+- trigger: time
+  at: !input close_time
+  id: schliessen
+actions:
+- choose:
+  - conditions:
+    - condition: trigger
+      id: oeffnen
+    sequence:
+    - action: cover.open_cover
+      target: !input cover_target
+  - conditions:
+    - condition: trigger
+      id: schliessen
+    sequence:
+    - action: cover.close_cover
+      target: !input cover_target
