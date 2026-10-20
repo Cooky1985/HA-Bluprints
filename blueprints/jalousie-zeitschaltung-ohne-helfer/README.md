@@ -1,6 +1,6 @@
 # Jalousie Zeitschaltung (ohne Helfer)
 
-[![Öffnet deine Home-Assistant-Instanz und zeigt den Blueprint-Import-Dialog mit diesem Blueprint an.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FCooky1985%2FHA-Bluprints%2Fblob%2Fmain%2Fblueprints%2Fjalousie-zeitschaltung-ohne-helfer%2Fjalousie_zeitschaltung_ohne_helfer.yaml)
+[![Öffnet deine Home-Assistant-Instanz und zeigt den Blueprint-Import-Dialog mit diesem Blueprint an.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FCooky1985%2FHA-Bluprints%2Fmain%2Fblueprints%2Fjalousie-zeitschaltung-ohne-helfer%2Fjalousie_zeitschaltung_ohne_helfer.yaml)
 
 Öffnet und schließt eine oder mehrere Jalousien (oder Rollläden) zu zwei festen Uhrzeiten. Dieses Blueprint braucht keine Helfer: Die Zeiten werden direkt in der Automation eingestellt, zum Ein- und Ausschalten dient der normale Schalter der Automation.
 
