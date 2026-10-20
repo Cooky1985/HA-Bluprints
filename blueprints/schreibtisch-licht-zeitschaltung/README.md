@@ -48,6 +48,12 @@ input_datetime:
 
 **Per Button:** Oben auf den Button klicken (beim ersten Mal fragt My Home Assistant nach der Adresse deiner Instanz), im Dialog auf *Vorschau* und dann auf *Blueprint importieren* klicken. Gespeichert wird er standardmäßig als `Cooky1985/schreibtisch_licht_zeitschaltung.yaml`.
 
+**Ohne Button:** In Home Assistant unter *Einstellungen → Automatisierungen & Szenen → Blueprints* unten rechts auf *Blueprint importieren* gehen, diese Adresse einfügen, auf *Vorschau* und dann auf *Blueprint importieren* klicken:
+
+```
+https://raw.githubusercontent.com/Cooky1985/HA-Bluprints/main/blueprints/schreibtisch-licht-zeitschaltung/schreibtisch_licht_zeitschaltung.yaml
+```
+
 **Manuell:** `schreibtisch_licht_zeitschaltung.yaml` nach `config/blueprints/automation/user/schreibtisch_licht_zeitschaltung.yaml` auf dem Home-Assistant-Server kopieren.
 
 Danach unter *Einstellungen → Automatisierungen & Szenen → Blueprints* das Blueprint öffnen und *Automatisierung erstellen* wählen.

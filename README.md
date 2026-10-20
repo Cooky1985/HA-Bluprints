@@ -29,5 +29,5 @@ Zu jedem Blueprint beschreibt die `README.md` Zweck, Funktionsweise, Eingaben un
 
 ## Einbinden
 
-1. Am einfachsten über den Import-Button in der Übersicht oder in der README des Blueprints (öffnet den Import-Dialog in deinem Home Assistant). Alternativ die YAML-Datei des Blueprints nach `config/blueprints/automation/user/` kopieren.
+1. Am einfachsten über den Import-Button in der Übersicht oder in der README des Blueprints (öffnet den Import-Dialog in deinem Home Assistant). Funktioniert der Button nicht, in Home Assistant unter *Blueprints → Blueprint importieren* die Raw-Adresse aus der README des Blueprints einfügen. Alternativ die YAML-Datei des Blueprints nach `config/blueprints/automation/user/` kopieren.
 2. In Home Assistant unter *Einstellungen → Automatisierungen & Szenen → Blueprints* prüfen, dass das Blueprint erscheint, und daraus eine Automatisierung erstellen.

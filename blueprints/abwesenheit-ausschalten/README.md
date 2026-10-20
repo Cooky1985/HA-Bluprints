@@ -35,6 +35,12 @@ Für jede Person eine `person`-Entität mit Standorterkennung (z. B. Companion-A
 
 **Per Button:** Oben auf den Button klicken (beim ersten Mal fragt My Home Assistant nach der Adresse deiner Instanz), im Dialog auf *Vorschau* und dann auf *Blueprint importieren* klicken. Gespeichert wird er standardmäßig als `Cooky1985/abwesenheit_ausschalten`.
 
+**Ohne Button:** In Home Assistant unter *Einstellungen → Automatisierungen & Szenen → Blueprints* unten rechts auf *Blueprint importieren* gehen, diese Adresse einfügen, auf *Vorschau* und dann auf *Blueprint importieren* klicken:
+
+```
+https://raw.githubusercontent.com/Cooky1985/HA-Bluprints/main/blueprints/abwesenheit-ausschalten/abwesenheit_ausschalten.yaml
+```
+
 **Manuell:** `abwesenheit_ausschalten.yaml` nach `config/blueprints/automation/user/abwesenheit_ausschalten.yaml` auf dem Home-Assistant-Server kopieren.
 
 Danach unter *Einstellungen → Automatisierungen & Szenen → Blueprints* das Blueprint öffnen und *Automatisierung erstellen* wählen.
