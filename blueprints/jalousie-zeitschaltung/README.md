@@ -1,8 +1,10 @@
 # Jalousie Zeitschaltung (Zeiten per Helfer)
 
+[![Öffnet deine Home-Assistant-Instanz und zeigt den Blueprint-Import-Dialog mit diesem Blueprint an.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FCooky1985%2FHA-Bluprints%2Fblob%2Fmain%2Fblueprints%2Fjalousie-zeitschaltung%2Fjalousie_zeitschaltung.yaml)
+
 Öffnet und schließt eine oder mehrere Jalousien (oder Rollläden) zu festen Uhrzeiten. Die Zeiten kommen aus zwei `input_datetime`-Helfern (nur Uhrzeit) und lassen sich deshalb bequem im Dashboard ändern. Ein `input_boolean` aktiviert oder deaktiviert die Zeitschaltung.
 
-- **Datei:** `blueprint.yaml` (in Home Assistant als `user/jalousie_zeitschaltung.yaml`)
+- **Datei:** `jalousie_zeitschaltung.yaml`
 - **Mindestversion Home Assistant:** 2024.10.0
 
 ## Funktionsweise
@@ -44,13 +46,15 @@ input_datetime:
 
 ## Einbinden
 
-1. `blueprint.yaml` auf dem Home-Assistant-Server nach `config/blueprints/automation/user/jalousie_zeitschaltung.yaml` kopieren. Den Dateinamen am besten beibehalten.
-2. Unter *Einstellungen → Automatisierungen & Szenen → Blueprints* prüfen, dass das Blueprint erscheint.
-3. Dort *Automatisierung erstellen* wählen und die Eingaben ausfüllen.
+**Per Button:** Oben auf den Button klicken (beim ersten Mal fragt My Home Assistant nach der Adresse deiner Instanz), im Dialog auf *Vorschau* und dann auf *Blueprint importieren* klicken. Gespeichert wird er standardmäßig als `Cooky1985/jalousie_zeitschaltung.yaml`.
+
+**Manuell:** `jalousie_zeitschaltung.yaml` nach `config/blueprints/automation/user/jalousie_zeitschaltung.yaml` auf dem Home-Assistant-Server kopieren.
+
+Danach unter *Einstellungen → Automatisierungen & Szenen → Blueprints* das Blueprint öffnen und *Automatisierung erstellen* wählen.
 
 ## Beispiel
 
-Automation, die das Blueprint verwendet (Entitäten sind Platzhalter):
+Automation, die das Blueprint verwendet (Entitäten sind Platzhalter; bei Import per Button lautet der Pfad `Cooky1985/jalousie_zeitschaltung.yaml`):
 
 ```yaml
 alias: Wohnzimmer Jalousie Zeitschaltung
