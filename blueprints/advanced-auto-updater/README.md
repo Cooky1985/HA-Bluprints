@@ -1,10 +1,10 @@
 # Advanced Auto-Updater (Cloud-Backup + Geräte + Neustart)
 
-[![Öffnet deine Home-Assistant-Instanz und zeigt den Blueprint-Import-Dialog mit diesem Blueprint an.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FCooky1985%2FHA-Bluprints%2Fblob%2Fmain%2Fblueprints%2Fadvanced-auto-updater-cloud%2Fadvanced_auto_updater_cloud.yaml)
+[![Öffnet deine Home-Assistant-Instanz und zeigt den Blueprint-Import-Dialog mit diesem Blueprint an.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FCooky1985%2FHA-Bluprints%2Fblob%2Fmain%2Fblueprints%2Fadvanced-auto-updater%2Fadvanced_auto_updater.yaml)
 
 Eigene Version (6.0.0-local) des Blueprints „Advanced Auto-Updater“ von Artropos (Basis 5.3.0, [Quelle](https://gist.github.com/Artropos/0b8ada3459b10e4d3bbf259ea71c3ace)). Installiert Updates in sicherer Reihenfolge, übersteht HA-Neustarts, wiederholt fehlgeschlagene Downloads und sendet genau eine Abschlussmeldung.
 
-- **Datei:** `advanced_auto_updater_cloud.yaml`
+- **Datei:** `advanced_auto_updater.yaml`
 
 ## Änderungen gegenüber Version 5.3.0
 
@@ -71,20 +71,20 @@ input_boolean:
 
 ## Einbinden
 
-**Per Button:** Oben auf den Button klicken (beim ersten Mal fragt My Home Assistant nach der Adresse deiner Instanz), im Dialog auf *Vorschau* und dann auf *Blueprint importieren* klicken. Gespeichert wird er standardmäßig als `Cooky1985/advanced_auto_updater_cloud.yaml`.
+**Per Button:** Oben auf den Button klicken (beim ersten Mal fragt My Home Assistant nach der Adresse deiner Instanz), im Dialog auf *Vorschau* und dann auf *Blueprint importieren* klicken. Gespeichert wird er standardmäßig als `Cooky1985/advanced_auto_updater.yaml`.
 
-**Manuell:** `advanced_auto_updater_cloud.yaml` nach `config/blueprints/automation/user/advanced_auto_updater_cloud.yaml` auf dem Home-Assistant-Server kopieren.
+**Manuell:** `advanced_auto_updater.yaml` nach `config/blueprints/automation/user/advanced_auto_updater.yaml` auf dem Home-Assistant-Server kopieren.
 
 Danach unter *Einstellungen → Automatisierungen & Szenen → Blueprints* das Blueprint öffnen und *Automatisierung erstellen* wählen.
 
 ## Beispiel
 
-Automation, die das Blueprint verwendet (Entitäten sind Platzhalter; bei Import per Button lautet der Pfad `Cooky1985/advanced_auto_updater_cloud.yaml`):
+Automation, die das Blueprint verwendet (Entitäten sind Platzhalter; bei Import per Button lautet der Pfad `Cooky1985/advanced_auto_updater.yaml`):
 
 ```yaml
 alias: Auto-Updater
 use_blueprint:
-  path: user/advanced_auto_updater_cloud.yaml
+  path: user/advanced_auto_updater.yaml
   input:
     run_time: "03:00:00"
     update_core: false

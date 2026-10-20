@@ -1,10 +1,10 @@
 # Licht Zeitschaltung (Zeiten per Helfer)
 
-[![Öffnet deine Home-Assistant-Instanz und zeigt den Blueprint-Import-Dialog mit diesem Blueprint an.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FCooky1985%2FHA-Bluprints%2Fblob%2Fmain%2Fblueprints%2Flicht-zeitschaltung%2Flicht_zeitschaltung.yaml)
+[![Öffnet deine Home-Assistant-Instanz und zeigt den Blueprint-Import-Dialog mit diesem Blueprint an.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FCooky1985%2FHA-Bluprints%2Fblob%2Fmain%2Fblueprints%2Fschreibtisch-licht-zeitschaltung%2Fschreibtisch_licht_zeitschaltung.yaml)
 
 Schaltet ein oder mehrere Lichter zu festen Uhrzeiten ein und aus. Die Zeiten kommen aus zwei `input_datetime`-Helfern (nur Uhrzeit) und lassen sich deshalb bequem im Dashboard ändern. Ein `input_boolean` aktiviert oder deaktiviert die Zeitschaltung.
 
-- **Datei:** `licht_zeitschaltung.yaml`
+- **Datei:** `schreibtisch_licht_zeitschaltung.yaml`
 - **Mindestversion Home Assistant:** 2024.10.0
 
 ## Funktionsweise
@@ -46,20 +46,20 @@ input_datetime:
 
 ## Einbinden
 
-**Per Button:** Oben auf den Button klicken (beim ersten Mal fragt My Home Assistant nach der Adresse deiner Instanz), im Dialog auf *Vorschau* und dann auf *Blueprint importieren* klicken. Gespeichert wird er standardmäßig als `Cooky1985/licht_zeitschaltung.yaml`.
+**Per Button:** Oben auf den Button klicken (beim ersten Mal fragt My Home Assistant nach der Adresse deiner Instanz), im Dialog auf *Vorschau* und dann auf *Blueprint importieren* klicken. Gespeichert wird er standardmäßig als `Cooky1985/schreibtisch_licht_zeitschaltung.yaml`.
 
-**Manuell:** `licht_zeitschaltung.yaml` nach `config/blueprints/automation/user/licht_zeitschaltung.yaml` auf dem Home-Assistant-Server kopieren.
+**Manuell:** `schreibtisch_licht_zeitschaltung.yaml` nach `config/blueprints/automation/user/schreibtisch_licht_zeitschaltung.yaml` auf dem Home-Assistant-Server kopieren.
 
 Danach unter *Einstellungen → Automatisierungen & Szenen → Blueprints* das Blueprint öffnen und *Automatisierung erstellen* wählen.
 
 ## Beispiel
 
-Automation, die das Blueprint verwendet (Entitäten sind Platzhalter; bei Import per Button lautet der Pfad `Cooky1985/licht_zeitschaltung.yaml`):
+Automation, die das Blueprint verwendet (Entitäten sind Platzhalter; bei Import per Button lautet der Pfad `Cooky1985/schreibtisch_licht_zeitschaltung.yaml`):
 
 ```yaml
 alias: Wohnzimmer Licht Zeitschaltung
 use_blueprint:
-  path: user/licht_zeitschaltung.yaml
+  path: user/schreibtisch_licht_zeitschaltung.yaml
   input:
     light_target:
       entity_id:
