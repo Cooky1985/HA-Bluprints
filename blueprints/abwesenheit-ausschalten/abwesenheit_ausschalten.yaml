@@ -1,0 +1,93 @@
+blueprint:
+  name: Abwesenheit - Geräte ausschalten und überwachen
+  description: |-
+    Schaltet gewählte Geräte aus, sobald alle gewählten Personen das Haus verlassen haben, und prüft danach regelmäßig (Standard: alle 5 Minuten), ob sie wirklich aus sind. Was noch an ist, wird erneut ausgeschaltet. Sobald jemand wieder nach Hause kommt, endet die Überwachung.
+  domain: automation
+  homeassistant:
+    min_version: 2024.10.0
+  input:
+    persons:
+      name: Personen
+      description: Alle diese Personen müssen weg sein (Zustand nicht "zuhause").
+      selector:
+        entity:
+          domain: person
+          multiple: true
+    targets:
+      name: Geräte zum Ausschalten
+      description: Entitäten, die ausgeschaltet und überwacht werden (z. B. Lichter, Schalter, Steckdosen, Media Player, Ventilatoren).
+      selector:
+        entity:
+          multiple: true
+    leave_delay:
+      name: Wartezeit nach dem Verlassen (Minuten)
+      description: So lange müssen alle weg sein, bevor ausgeschaltet wird. Verhindert Fehlauslösungen durch schwankendes GPS.
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 1
+          unit_of_measurement: minutes
+          mode: slider
+    check_interval:
+      name: Prüfintervall (Minuten)
+      description: Abstand, in dem geprüft wird, ob alle Geräte aus sind.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+          unit_of_measurement: minutes
+          mode: slider
+    max_checks:
+      name: Maximale Prüfungen
+      description: Nach so vielen Prüfungen endet die Überwachung. 0 bedeutet, geprüft wird, bis jemand nach Hause kommt.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 500
+          step: 1
+          mode: box
+mode: restart
+max_exceeded: silent
+variables:
+  persons: !input persons
+  targets: !input targets
+  max_checks: !input max_checks
+triggers:
+- trigger: state
+  entity_id: !input persons
+conditions:
+- condition: template
+  value_template: |-
+    {{ expand(persons) | selectattr('state', 'eq', 'home') | list | count == 0 }}
+actions:
+- delay:
+    minutes: !input leave_delay
+- repeat:
+    while:
+    - condition: template
+      value_template: |-
+        {{ expand(persons) | selectattr('state', 'eq', 'home') | list | count == 0 }}
+    - condition: template
+      value_template: |-
+        {{ max_checks | int(0) == 0 or repeat.index <= max_checks | int(0) }}
+    sequence:
+    - variables:
+        still_on: |-
+          {{ expand(targets) | rejectattr('state', 'in', ['off', 'unavailable', 'unknown']) | map(attribute='entity_id') | list }}
+    - if:
+      - condition: template
+        value_template: |-
+          {{ still_on | count > 0 }}
+      then:
+      - action: homeassistant.turn_off
+        target:
+          entity_id: |-
+            {{ still_on }}
+        continue_on_error: true
+    - delay:
+        minutes: !input check_interval
